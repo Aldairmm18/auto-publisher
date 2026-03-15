@@ -1,17 +1,18 @@
 """
-Servicio de generación de texto con Claude AI (Anthropic).
+Servicio de generación de texto con Groq (LLaMA 3.3 70B).
 Genera texto optimizado para cada red social.
+Groq es gratis, rápido, y no requiere tarjeta de crédito.
 """
 
-import anthropic
-from config import ANTHROPIC_API_KEY
+from groq import Groq
+from config import GROQ_API_KEY
 
-# Inicializar cliente de Claude
+# Inicializar cliente de Groq
 client = None
-if ANTHROPIC_API_KEY:
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+if GROQ_API_KEY:
+    client = Groq(api_key=GROQ_API_KEY)
 else:
-    print("⚠️  ANTHROPIC_API_KEY no configurada. La generación de texto no funcionará.")
+    print("⚠️  GROQ_API_KEY no configurada. La generación de texto no funcionará.")
 
 
 SYSTEM_PROMPT = """Eres un experto en marketing digital y redes sociales. 
@@ -78,20 +79,21 @@ Responde SOLO con el texto generado. Sin explicaciones ni comentarios adicionale
 async def generate_text_for_platform(tema: str, descripcion: str | None, tono: str, platform: str) -> str:
     """Genera texto para UNA plataforma específica."""
     if not client:
-        raise RuntimeError("Claude AI no configurado. Agrega ANTHROPIC_API_KEY al .env")
+        raise RuntimeError("Groq AI no configurado. Agrega GROQ_API_KEY al .env")
     
     prompt = _build_prompt(tema, descripcion, tono, platform)
     
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
+    chat_completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
         ],
+        temperature=0.8,
+        max_tokens=1024,
     )
     
-    return message.content[0].text.strip()
+    return chat_completion.choices[0].message.content.strip()
 
 
 async def generate_all_texts(tema: str, descripcion: str | None = None, tono: str = "profesional") -> dict:

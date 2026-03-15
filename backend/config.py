@@ -12,8 +12,8 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
-# Anthropic (Claude AI)
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# Groq AI (LLaMA 3.3 70B)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 # Telegram
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -26,8 +26,8 @@ def validate_config():
         missing.append("SUPABASE_URL")
     if not SUPABASE_SERVICE_KEY:
         missing.append("SUPABASE_SERVICE_KEY")
-    if not ANTHROPIC_API_KEY:
-        missing.append("ANTHROPIC_API_KEY")
+    if not GROQ_API_KEY:
+        missing.append("GROQ_API_KEY")
     if missing:
         print(f"⚠️  Variables faltantes: {', '.join(missing)}")
         print("   Copia .env.example a .env y llena los valores.")
