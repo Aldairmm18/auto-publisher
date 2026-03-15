@@ -50,7 +50,7 @@ async def root():
 @app.post("/api/generate-text", response_model=GenerateTextResponse)
 async def generate_text(request: GenerateTextRequest):
     """
-    Genera texto optimizado para cada red social usando Gemini AI.
+    Genera texto optimizado para cada red social usando Claude AI.
     
     Recibe un tema y opcionalmente una descripción y tono.
     Retorna texto adaptado para Facebook, Instagram, TikTok y YouTube.

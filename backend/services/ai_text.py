@@ -1,17 +1,17 @@
 """
-Servicio de generación de texto con Gemini AI.
+Servicio de generación de texto con Claude AI (Anthropic).
 Genera texto optimizado para cada red social.
 """
 
-from google import genai
-from config import GEMINI_API_KEY
+import anthropic
+from config import ANTHROPIC_API_KEY
 
-# Inicializar cliente de Gemini
+# Inicializar cliente de Claude
 client = None
-if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY)
+if ANTHROPIC_API_KEY:
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 else:
-    print("⚠️  GEMINI_API_KEY no configurada. La generación de texto no funcionará.")
+    print("⚠️  ANTHROPIC_API_KEY no configurada. La generación de texto no funcionará.")
 
 
 SYSTEM_PROMPT = """Eres un experto en marketing digital y redes sociales. 
@@ -78,21 +78,20 @@ Responde SOLO con el texto generado. Sin explicaciones ni comentarios adicionale
 async def generate_text_for_platform(tema: str, descripcion: str | None, tono: str, platform: str) -> str:
     """Genera texto para UNA plataforma específica."""
     if not client:
-        raise RuntimeError("Gemini AI no configurado. Agrega GEMINI_API_KEY al .env")
+        raise RuntimeError("Claude AI no configurado. Agrega ANTHROPIC_API_KEY al .env")
     
     prompt = _build_prompt(tema, descripcion, tono, platform)
     
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.8,  # Creatividad moderada-alta
-            max_output_tokens=1024,
-        ),
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
     )
     
-    return response.text.strip()
+    return message.content[0].text.strip()
 
 
 async def generate_all_texts(tema: str, descripcion: str | None = None, tono: str = "profesional") -> dict:
@@ -116,7 +115,6 @@ async def generate_all_texts(tema: str, descripcion: str | None = None, tono: st
 def _extract_youtube_tags(description: str) -> list[str]:
     """Intenta extraer tags del final de la descripción de YouTube."""
     lines = description.strip().split("\n")
-    # Buscar la última línea que parezca una lista de tags
     for line in reversed(lines):
         if "," in line and len(line.split(",")) >= 3:
             return [tag.strip() for tag in line.split(",") if tag.strip()]
