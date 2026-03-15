@@ -27,3 +27,6 @@ Thumbs.db
 # Node (para frontend futuro)
 node_modules/
 .next/
+
+# Imágenes generadas por IA
+backend/generated_images/

@@ -37,3 +37,29 @@ class PostResponse(BaseModel):
     post_id: str
     status: str
     variantes: dict  # {platform: generated_text}
+
+
+class GenerateThumbnailRequest(BaseModel):
+    """Request para generar una miniatura."""
+    tema: str                           # Ej: "Tutorial de edición en Premiere Pro"
+    descripcion: Optional[str] = None   # Descripción adicional
+    estilo: str = "llamativo"           # llamativo, minimalista, profesional, divertido, cinematico
+    width: int = 1280                   # Ancho en px
+    height: int = 720                   # Alto en px
+
+
+class ThumbnailResponse(BaseModel):
+    """Response de una miniatura generada."""
+    filename: str
+    url: str
+    prompt_used: str
+    estilo: str
+    width: int
+    height: int
+
+
+class MultipleThumbnailsRequest(BaseModel):
+    """Request para generar múltiples miniaturas."""
+    tema: str
+    descripcion: Optional[str] = None
+    estilos: list[str] = ["llamativo", "profesional"]

@@ -4,11 +4,13 @@ Auto Publisher API — Backend principal con FastAPI.
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from config import validate_config
-from models import GenerateTextRequest, GenerateTextResponse, CreatePostRequest, PostResponse
+from models import GenerateTextRequest, GenerateTextResponse, CreatePostRequest, PostResponse, GenerateThumbnailRequest, ThumbnailResponse, MultipleThumbnailsRequest
 from services.ai_text import generate_all_texts
+from services.ai_image import generate_thumbnail, generate_multiple_thumbnails, IMAGES_DIR
 from database.posts import crear_post, crear_variante, obtener_post, listar_posts
 
 
@@ -39,6 +41,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Servir imágenes generadas como archivos estáticos
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
 
 @app.get("/")
@@ -137,6 +142,51 @@ async def get_post(post_id: str):
     if not post:
         raise HTTPException(status_code=404, detail="Post no encontrado")
     return post
+
+
+@app.post("/api/generate-thumbnail", response_model=ThumbnailResponse)
+async def api_generate_thumbnail(request: GenerateThumbnailRequest):
+    """
+    Genera una miniatura/imagen llamativa usando Together AI (FLUX).
+    
+    Estilos disponibles: llamativo, minimalista, profesional, divertido, cinematico.
+    """
+    try:
+        result = await generate_thumbnail(
+            tema=request.tema,
+            descripcion=request.descripcion,
+            estilo=request.estilo,
+            width=request.width,
+            height=request.height,
+        )
+        return ThumbnailResponse(
+            filename=result["filename"],
+            url=result["url"],
+            prompt_used=result["prompt_used"],
+            estilo=result["estilo"],
+            width=result["width"],
+            height=result["height"],
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando miniatura: {str(e)}")
+
+
+@app.post("/api/generate-thumbnails")
+async def api_generate_multiple_thumbnails(request: MultipleThumbnailsRequest):
+    """
+    Genera múltiples miniaturas con diferentes estilos para comparar.
+    """
+    try:
+        results = await generate_multiple_thumbnails(
+            tema=request.tema,
+            descripcion=request.descripcion,
+            estilos=request.estilos,
+        )
+        return {"thumbnails": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando miniaturas: {str(e)}")
 
 
 if __name__ == "__main__":
