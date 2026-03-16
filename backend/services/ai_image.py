@@ -1,26 +1,21 @@
 """
-Servicio de generación de imágenes/miniaturas con Together AI (FLUX).
+Servicio de generación de imágenes/miniaturas con Pollinations AI.
 Genera miniaturas llamativas para publicaciones en redes sociales.
-Together AI es gratis ($25 créditos al registrarse).
+Pollinations es GRATIS y no requiere API key.
 """
 
-import base64
+import httpx
 import os
 import uuid
 from datetime import datetime
-from together import Together
-from config import TOGETHER_API_KEY
-
-# Inicializar cliente de Together AI
-client = None
-if TOGETHER_API_KEY:
-    client = Together(api_key=TOGETHER_API_KEY)
-else:
-    print("⚠️  TOGETHER_API_KEY no configurada. La generación de imágenes no funcionará.")
+from urllib.parse import quote
 
 # Carpeta donde se guardan las imágenes generadas
 IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "generated_images")
 os.makedirs(IMAGES_DIR, exist_ok=True)
+
+# URL base de Pollinations AI
+POLLINATIONS_API = "https://image.pollinations.ai"
 
 
 def _build_image_prompt(tema: str, descripcion: str | None, estilo: str) -> str:
@@ -54,7 +49,7 @@ async def generate_thumbnail(
     height: int = 720,
 ) -> dict:
     """
-    Genera una miniatura/imagen usando Together AI (FLUX).
+    Genera una miniatura/imagen usando Pollinations AI.
 
     Args:
         tema: Tema principal de la imagen
@@ -66,27 +61,25 @@ async def generate_thumbnail(
     Returns:
         dict con: filename, filepath, url (local), prompt_used
     """
-    if not client:
-        raise RuntimeError("Together AI no configurado. Agrega TOGETHER_API_KEY al .env")
-
     prompt = _build_image_prompt(tema, descripcion, estilo)
 
-    # Generar imagen con FLUX
-    response = client.images.generate(
-        model="black-forest-labs/FLUX.1-schnell-Free",
-        prompt=prompt,
-        width=width,
-        height=height,
-        steps=4,
-        n=1,
-        response_format="b64_json",
-    )
+    # Construir URL con parámetros
+    encoded_prompt = quote(prompt)
+    url = f"{POLLINATIONS_API}/prompt/{encoded_prompt}?width={width}&height={height}&model=flux&nologo=true"
 
-    if not response.data or not response.data[0].b64_json:
-        raise RuntimeError("Together AI no retornó imagen")
+    # Descargar imagen
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, timeout=60.0)
+            response.raise_for_status()
+        except Exception as e:
+            raise RuntimeError(f"Error descargando imagen de Pollinations: {str(e)}")
 
-    # Decodificar y guardar la imagen
-    image_bytes = base64.b64decode(response.data[0].b64_json)
+    if response.status_code != 200:
+        raise RuntimeError(f"Pollinations retornó status {response.status_code}")
+
+    # Guardar imagen
+    image_bytes = response.content
     filename = f"thumb_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
     filepath = os.path.join(IMAGES_DIR, filename)
 
