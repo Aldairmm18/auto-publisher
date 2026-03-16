@@ -98,8 +98,17 @@ def publish_to_facebook(text: str, image_path: str = None, video_path: str = Non
                 file_input.set_input_files(video_path)
                 page.wait_for_timeout(5000)
 
+            print("[FACEBOOK] Haciendo click en 'Siguiente'...")
+            next_btn = page.locator(
+                'div[aria-label="Siguiente"], div[aria-label="Next"], span:has-text("Siguiente"), span:has-text("Next")'
+            ).first
+            next_btn.click(timeout=10000)
+            page.wait_for_timeout(2000)
+
             print("[FACEBOOK] Haciendo click en 'Publicar'...")
-            post_btn = page.locator('[aria-label="Post"], [aria-label="Publicar"]').first
+            post_btn = page.locator(
+                'div[aria-label="Publicar"], div[aria-label="Publish"], div[aria-label="Post"], span:has-text("Publicar"), span:has-text("Post"), span:has-text("Publish")'
+            ).first
             post_btn.click(timeout=10000)
             page.wait_for_timeout(5000)
 
