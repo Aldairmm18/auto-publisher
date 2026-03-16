@@ -6,6 +6,7 @@ Pollinations es GRATIS y no requiere API key.
 
 import httpx
 import os
+import unicodedata
 import uuid
 from datetime import datetime
 from urllib.parse import quote
@@ -22,9 +23,20 @@ MAX_RETRIES = 3
 RETRY_DELAY = 1
 
 
+def _remove_special_chars(text: str) -> str:
+    """Elimina caracteres especiales y tildes, dejando solo ASCII."""
+    # Normalizar y eliminar acentos
+    text = unicodedata.normalize('NFKD', text)
+    text = text.encode('ASCII', 'ignore').decode('ASCII')
+    # Eliminar caracteres especiales manteniendo solo alfanuméricos, espacios y puntuación básica
+    text = ''.join(c for c in text if c.isalnum() or c in ' -.,')
+    return text
+
+
 def _build_image_prompt(tema: str, descripcion: str | None, estilo: str) -> str:
     """
     Construye un prompt CORTO (máx 200 caracteres) optimizado para Pollinations AI.
+    Solo usa caracteres ASCII en inglés, sin tildes ni caracteres especiales.
     """
 
     estilos = {
@@ -42,6 +54,9 @@ def _build_image_prompt(tema: str, descripcion: str | None, estilo: str) -> str:
     plain_tema = tema.split(",")[0][:40]  # Primeras 40 chars del tema
     prompt = f"{plain_tema}, {estilo_desc}, no text, social media thumbnail"
 
+    # Limpiar caracteres especiales
+    prompt = _remove_special_chars(prompt)
+
     # Asegurar que no exceda 200 caracteres
     if len(prompt) > 200:
         prompt = prompt[:197] + "..."
@@ -58,6 +73,7 @@ async def generate_thumbnail(
 ) -> dict:
     """
     Genera una miniatura/imagen usando Pollinations AI con reintentos automáticos.
+    Intenta primero con modelo 'turbo', luego sin especificar modelo (por defecto).
 
     Args:
         tema: Tema principal de la imagen
@@ -73,44 +89,53 @@ async def generate_thumbnail(
     
     prompt = _build_image_prompt(tema, descripcion, estilo)
 
-    # Construir URL con parámetros
+    # Construir URLs a intentar: primero con turbo, luego sin modelo
     encoded_prompt = quote(prompt)
-    url = f"{POLLINATIONS_API}/prompt/{encoded_prompt}?width={width}&height={height}&model=flux&nologo=true"
+    urls_to_try = [
+        f"{POLLINATIONS_API}/prompt/{encoded_prompt}?width={width}&height={height}&model=turbo&nologo=true",
+        f"{POLLINATIONS_API}/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true",
+    ]
 
     # Descargar imagen con reintentos
     last_error = None
-    for attempt in range(MAX_RETRIES):
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-                
-                # Si la descarga fue exitosa, guardar la imagen
-                image_bytes = response.content
-                filename = f"thumb_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
-                filepath = os.path.join(IMAGES_DIR, filename)
+    for url_idx, url in enumerate(urls_to_try):
+        model_attempt = "turbo" if url_idx == 0 else "default"
+        for attempt in range(MAX_RETRIES):
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    response = await client.get(url)
+                    response.raise_for_status()
+                    
+                    # Si la descarga fue exitosa, guardar la imagen
+                    image_bytes = response.content
+                    filename = f"thumb_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
+                    filepath = os.path.join(IMAGES_DIR, filename)
 
-                with open(filepath, "wb") as f:
-                    f.write(image_bytes)
+                    with open(filepath, "wb") as f:
+                        f.write(image_bytes)
 
-                return {
-                    "filename": filename,
-                    "filepath": filepath,
-                    "url": f"/images/{filename}",
-                    "prompt_used": prompt,
-                    "estilo": estilo,
-                    "width": width,
-                    "height": height,
-                }
-        except Exception as e:
-            last_error = str(e)
-            if attempt < MAX_RETRIES - 1:
-                # Esperar antes de reintentar
-                await asyncio.sleep(RETRY_DELAY)
-                continue
-            else:
-                # Último intento falló
-                raise RuntimeError(f"Error descargando imagen de Pollinations después de {MAX_RETRIES} intentos: {last_error}")
+                    return {
+                        "filename": filename,
+                        "filepath": filepath,
+                        "url": f"/images/{filename}",
+                        "prompt_used": prompt,
+                        "estilo": estilo,
+                        "width": width,
+                        "height": height,
+                    }
+            except Exception as e:
+                last_error = str(e)
+                if attempt < MAX_RETRIES - 1:
+                    # Esperar antes de reintentar
+                    await asyncio.sleep(RETRY_DELAY)
+                    continue
+                else:
+                    # Intentar siguiente URL
+                    break
+
+    # Todos los intentos fallaron
+    raise RuntimeError(f"Error descargando imagen de Pollinations después de múltiples intentos: {last_error}")
+
 
 
 async def generate_multiple_thumbnails(
