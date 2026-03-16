@@ -63,3 +63,16 @@ class MultipleThumbnailsRequest(BaseModel):
     tema: str
     descripcion: Optional[str] = None
     estilos: list[str] = ["llamativo", "profesional"]
+
+
+class PublishRequest(BaseModel):
+    """Request para publicar en redes sociales."""
+    texto_facebook: Optional[str] = None
+    texto_instagram: Optional[str] = None
+    texto_tiktok: Optional[str] = None
+    youtube_title: Optional[str] = None
+    youtube_description: Optional[str] = None
+    image_path: Optional[str] = None
+    video_path: Optional[str] = None
+    thumbnail_path: Optional[str] = None
+    plataformas: list[str] = ["facebook", "instagram", "tiktok", "youtube"]

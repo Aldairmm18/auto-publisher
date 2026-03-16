@@ -8,10 +8,14 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from config import validate_config
-from models import GenerateTextRequest, GenerateTextResponse, CreatePostRequest, PostResponse, GenerateThumbnailRequest, ThumbnailResponse, MultipleThumbnailsRequest
+from models import GenerateTextRequest, GenerateTextResponse, CreatePostRequest, PostResponse, GenerateThumbnailRequest, ThumbnailResponse, MultipleThumbnailsRequest, PublishRequest
 from services.ai_text import generate_all_texts
 from services.ai_image import generate_thumbnail, generate_multiple_thumbnails, IMAGES_DIR
 from database.posts import crear_post, crear_variante, obtener_post, listar_posts
+from publishers.facebook import publish_to_facebook
+from publishers.instagram import publish_to_instagram
+from publishers.tiktok_pub import publish_to_tiktok
+from publishers.youtube_pub import publish_to_youtube
 
 
 @asynccontextmanager
@@ -187,6 +191,64 @@ async def api_generate_multiple_thumbnails(request: MultipleThumbnailsRequest):
         return {"thumbnails": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generando miniaturas: {str(e)}")
+
+
+@app.post("/api/publish")
+async def api_publish(request: PublishRequest):
+    """
+    Publica contenido en las redes sociales seleccionadas.
+    Requiere haber iniciado sesión previamente (cookies guardadas).
+    """
+    results = []
+    
+    for plataforma in request.plataformas:
+        try:
+            if plataforma == "facebook" and request.texto_facebook:
+                result = await publish_to_facebook(
+                    text=request.texto_facebook,
+                    image_path=request.image_path,
+                    video_path=request.video_path,
+                )
+                results.append(result)
+            
+            elif plataforma == "instagram" and request.texto_instagram and request.image_path:
+                result = await publish_to_instagram(
+                    caption=request.texto_instagram,
+                    image_path=request.image_path,
+                )
+                results.append(result)
+            
+            elif plataforma == "tiktok" and request.texto_tiktok and request.video_path:
+                result = await publish_to_tiktok(
+                    video_path=request.video_path,
+                    description=request.texto_tiktok,
+                )
+                results.append(result)
+            
+            elif plataforma == "youtube" and request.youtube_title and request.video_path:
+                result = await publish_to_youtube(
+                    video_path=request.video_path,
+                    title=request.youtube_title,
+                    description=request.youtube_description or "",
+                    thumbnail_path=request.thumbnail_path,
+                )
+                results.append(result)
+            
+            else:
+                results.append({
+                    "success": False,
+                    "platform": plataforma,
+                    "error": "Faltan datos requeridos para esta plataforma"
+                })
+        
+        except Exception as e:
+            results.append({
+                "success": False,
+                "platform": plataforma,
+                "error": str(e)
+            })
+    
+    return {"results": results}
 
 
 if __name__ == "__main__":

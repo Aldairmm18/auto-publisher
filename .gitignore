@@ -30,3 +30,6 @@ node_modules/
 
 # Imágenes generadas por IA
 backend/generated_images/
+
+# Cookies de sesiones (social media)
+backend/cookies/
