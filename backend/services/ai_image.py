@@ -17,26 +17,34 @@ os.makedirs(IMAGES_DIR, exist_ok=True)
 # URL base de Pollinations AI
 POLLINATIONS_API = "https://image.pollinations.ai"
 
+# Configuración de reintentos
+MAX_RETRIES = 3
+RETRY_DELAY = 1
+
 
 def _build_image_prompt(tema: str, descripcion: str | None, estilo: str) -> str:
-    """Construye un prompt optimizado para generación de miniaturas."""
+    """
+    Construye un prompt CORTO (máx 200 caracteres) optimizado para Pollinations AI.
+    """
 
     estilos = {
-        "llamativo": "Eye-catching, vibrant colors, bold typography space, high contrast, professional YouTube thumbnail style, dynamic composition, attention-grabbing",
-        "minimalista": "Clean, minimal, modern design, subtle colors, elegant typography space, white space, professional and refined",
-        "profesional": "Corporate style, polished, clean layout, professional colors (blue, dark gray, white), business-appropriate, high quality",
-        "divertido": "Fun, colorful, playful design, cartoon-like elements, bright saturated colors, energetic and lively composition",
-        "cinematico": "Cinematic look, dramatic lighting, film grain, widescreen composition, movie poster style, atmospheric and moody",
+        "llamativo": "eye-catching, vibrant colors, high contrast, bold, professional YouTube thumbnail",
+        "minimalista": "clean, minimal, modern design, subtle colors, white space, professional, elegant",
+        "profesional": "corporate, polished, professional colors blue dark gray, business, high quality",
+        "divertido": "fun, colorful, playful, bright colors, energetic, lively, cartoon elements",
+        "cinematico": "cinematic, dramatic lighting, movie poster style, atmospheric, widescreen",
     }
 
     estilo_desc = estilos.get(estilo, estilos["llamativo"])
 
-    prompt = f"""A professional social media thumbnail about: {tema}.
-{f'Additional context: {descripcion}.' if descripcion else ''}
-Style: {estilo_desc}.
-The image should be visually striking and suitable for a social media post or YouTube thumbnail.
-Do NOT include any text or letters in the image. Only visual elements.
-High resolution, 16:9 aspect ratio, photorealistic quality."""
+    # Construir prompt CORTO manteniendo bajo 200 caracteres
+    # Formato: "tema, estilo-specific, no text"
+    plain_tema = tema.split(",")[0][:40]  # Primeras 40 chars del tema
+    prompt = f"{plain_tema}, {estilo_desc}, no text, social media thumbnail"
+
+    # Asegurar que no exceda 200 caracteres
+    if len(prompt) > 200:
+        prompt = prompt[:197] + "..."
 
     return prompt
 
@@ -49,7 +57,7 @@ async def generate_thumbnail(
     height: int = 720,
 ) -> dict:
     """
-    Genera una miniatura/imagen usando Pollinations AI.
+    Genera una miniatura/imagen usando Pollinations AI con reintentos automáticos.
 
     Args:
         tema: Tema principal de la imagen
@@ -61,40 +69,48 @@ async def generate_thumbnail(
     Returns:
         dict con: filename, filepath, url (local), prompt_used
     """
+    import asyncio
+    
     prompt = _build_image_prompt(tema, descripcion, estilo)
 
     # Construir URL con parámetros
     encoded_prompt = quote(prompt)
     url = f"{POLLINATIONS_API}/prompt/{encoded_prompt}?width={width}&height={height}&model=flux&nologo=true"
 
-    # Descargar imagen
-    async with httpx.AsyncClient() as client:
+    # Descargar imagen con reintentos
+    last_error = None
+    for attempt in range(MAX_RETRIES):
         try:
-            response = await client.get(url, timeout=60.0)
-            response.raise_for_status()
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                
+                # Si la descarga fue exitosa, guardar la imagen
+                image_bytes = response.content
+                filename = f"thumb_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
+                filepath = os.path.join(IMAGES_DIR, filename)
+
+                with open(filepath, "wb") as f:
+                    f.write(image_bytes)
+
+                return {
+                    "filename": filename,
+                    "filepath": filepath,
+                    "url": f"/images/{filename}",
+                    "prompt_used": prompt,
+                    "estilo": estilo,
+                    "width": width,
+                    "height": height,
+                }
         except Exception as e:
-            raise RuntimeError(f"Error descargando imagen de Pollinations: {str(e)}")
-
-    if response.status_code != 200:
-        raise RuntimeError(f"Pollinations retornó status {response.status_code}")
-
-    # Guardar imagen
-    image_bytes = response.content
-    filename = f"thumb_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
-    filepath = os.path.join(IMAGES_DIR, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(image_bytes)
-
-    return {
-        "filename": filename,
-        "filepath": filepath,
-        "url": f"/images/{filename}",
-        "prompt_used": prompt,
-        "estilo": estilo,
-        "width": width,
-        "height": height,
-    }
+            last_error = str(e)
+            if attempt < MAX_RETRIES - 1:
+                # Esperar antes de reintentar
+                await asyncio.sleep(RETRY_DELAY)
+                continue
+            else:
+                # Último intento falló
+                raise RuntimeError(f"Error descargando imagen de Pollinations después de {MAX_RETRIES} intentos: {last_error}")
 
 
 async def generate_multiple_thumbnails(
