@@ -7,58 +7,56 @@ import os
 import asyncio
 from playwright.async_api import async_playwright
 
-COOKIES_FILE = os.path.join(os.path.dirname(__file__), "..", "cookies", "facebook_cookies.json")
+PROFILE_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "cookies", "chrome_profile_facebook")
+)
 
 
 async def login_facebook():
     """
-    Abre el navegador para que el usuario inicie sesión manualmente en Facebook.
-    Guarda las cookies para uso futuro.
+    Abre el navegador para que el usuario inicie sesion manualmente en Facebook.
+    Guarda la sesion en un perfil persistente de Chromium.
     Ejecutar UNA SOLA VEZ.
     """
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
-        context = await browser.new_context()
+        os.makedirs(PROFILE_DIR, exist_ok=True)
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir=PROFILE_DIR,
+            headless=False,
+            args=["--disable-blink-features=AutomationControlled"],
+            ignore_default_args=["--enable-automation"],
+        )
         page = await context.new_page()
         
         await page.goto("https://www.facebook.com")
         
         print("=" * 50)
-        print("FACEBOOK: Inicia sesión manualmente en el navegador.")
-        print("Cuando estés logueado y veas tu feed, presiona ENTER aquí.")
+        print("FACEBOOK: Inicia sesion manualmente en el navegador.")
+        print("Cuando estes logueado y veas tu feed, presiona ENTER aqui.")
         print("=" * 50)
         
-        input("Presiona ENTER cuando hayas iniciado sesión...")
+        input("Presiona ENTER cuando hayas iniciado sesion...")
         
-        # Guardar cookies
-        cookies = await context.cookies()
-        
-        import json
-        os.makedirs(os.path.dirname(COOKIES_FILE), exist_ok=True)
-        with open(COOKIES_FILE, "w") as f:
-            json.dump(cookies, f)
-        
-        print(f"✅ Cookies de Facebook guardadas en {COOKIES_FILE}")
-        await browser.close()
+        print(f"Sesion de Facebook guardada en {PROFILE_DIR}")
+        await context.close()
 
 
 async def publish_to_facebook(text: str, image_path: str = None, video_path: str = None) -> dict:
     """
-    Publica un post en Facebook usando cookies guardadas.
+    Publica un post en Facebook usando un perfil persistente.
     Soporta: texto solo, texto + imagen, texto + video.
     """
-    import json
-    
-    if not os.path.exists(COOKIES_FILE):
-        raise RuntimeError("No hay sesión de Facebook. Ejecuta login_facebook() primero.")
-    
-    with open(COOKIES_FILE, "r") as f:
-        cookies = json.load(f)
+    if not os.path.exists(PROFILE_DIR):
+        raise RuntimeError("No hay sesion de Facebook. Ejecuta login_facebook() primero.")
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
-        await context.add_cookies(cookies)
+        os.makedirs(PROFILE_DIR, exist_ok=True)
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir=PROFILE_DIR,
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+            ignore_default_args=["--enable-automation"],
+        )
         page = await context.new_page()
         
         try:
@@ -107,7 +105,7 @@ async def publish_to_facebook(text: str, image_path: str = None, video_path: str
             return {"success": False, "platform": "facebook", "error": str(e)}
         
         finally:
-            await browser.close()
+            await context.close()
 
 
 # Para ejecutar el login desde terminal:

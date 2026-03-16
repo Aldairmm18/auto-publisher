@@ -7,38 +7,41 @@ import os
 import asyncio
 from playwright.async_api import async_playwright
 
-COOKIES_FILE = os.path.join(os.path.dirname(__file__), "..", "cookies", "youtube_cookies.json")
+PROFILE_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "cookies", "chrome_profile_youtube")
+)
 
 
 async def login_youtube():
     """
-    Abre el navegador para que el usuario inicie sesión manualmente en YouTube.
-    Guarda las cookies para uso futuro.
+    Abre el navegador para que el usuario inicie sesion manualmente en YouTube.
+    Guarda la sesion en un perfil persistente de Chromium.
     Ejecutar UNA SOLA VEZ.
     """
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
-        context = await browser.new_context()
+        os.makedirs(PROFILE_DIR, exist_ok=True)
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir=PROFILE_DIR,
+            headless=False,
+            args=["--disable-blink-features=AutomationControlled"],
+            ignore_default_args=["--enable-automation"],
+        )
         page = await context.new_page()
         
-        await page.goto("https://studio.youtube.com")
+        await page.goto("https://accounts.google.com")
         
         print("=" * 50)
-        print("YOUTUBE: Inicia sesión manualmente en el navegador.")
-        print("Cuando estés logueado en YouTube Studio, presiona ENTER aquí.")
+        print("YOUTUBE: Inicia sesion manualmente en el navegador.")
+        print("Cuando hayas iniciado sesion en Google, presiona ENTER aqui.")
         print("=" * 50)
         
-        input("Presiona ENTER cuando hayas iniciado sesión...")
+        input("Presiona ENTER cuando hayas iniciado sesion...")
         
-        cookies = await context.cookies()
+        await page.goto("https://studio.youtube.com", wait_until="networkidle", timeout=30000)
+        await page.wait_for_timeout(3000)
         
-        import json
-        os.makedirs(os.path.dirname(COOKIES_FILE), exist_ok=True)
-        with open(COOKIES_FILE, "w") as f:
-            json.dump(cookies, f)
-        
-        print(f"✅ Cookies de YouTube guardadas en {COOKIES_FILE}")
-        await browser.close()
+        print(f"Sesion de YouTube guardada en {PROFILE_DIR}")
+        await context.close()
 
 
 async def publish_to_youtube(
@@ -51,21 +54,20 @@ async def publish_to_youtube(
     """
     Sube un video a YouTube usando YouTube Studio via Playwright.
     """
-    import json
-    
-    if not os.path.exists(COOKIES_FILE):
-        raise RuntimeError("No hay sesión de YouTube. Ejecuta login_youtube() primero.")
+    if not os.path.exists(PROFILE_DIR):
+        raise RuntimeError("No hay sesion de YouTube. Ejecuta login_youtube() primero.")
     
     if not video_path or not os.path.exists(video_path):
         raise RuntimeError("YouTube requiere un video para publicar.")
     
-    with open(COOKIES_FILE, "r") as f:
-        cookies = json.load(f)
-    
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
-        await context.add_cookies(cookies)
+        os.makedirs(PROFILE_DIR, exist_ok=True)
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir=PROFILE_DIR,
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+            ignore_default_args=["--enable-automation"],
+        )
         page = await context.new_page()
         
         try:
@@ -131,7 +133,7 @@ async def publish_to_youtube(
             return {"success": False, "platform": "youtube", "error": str(e)}
         
         finally:
-            await browser.close()
+            await context.close()
 
 
 if __name__ == "__main__":

@@ -8,41 +8,40 @@ import os
 import asyncio
 from playwright.async_api import async_playwright
 
-COOKIES_FILE = os.path.join(os.path.dirname(__file__), "..", "cookies", "instagram_cookies.json")
+PROFILE_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "cookies", "chrome_profile_instagram")
+)
 
 
 async def login_instagram():
     """
-    Abre el navegador para que el usuario inicie sesión manualmente en Instagram.
-    Guarda las cookies para uso futuro.
+    Abre el navegador para que el usuario inicie sesion manualmente en Instagram.
+    Guarda la sesion en un perfil persistente de Chromium.
     Ejecutar UNA SOLA VEZ.
     """
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
-        context = await browser.new_context(
+        os.makedirs(PROFILE_DIR, exist_ok=True)
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir=PROFILE_DIR,
+            headless=False,
+            args=["--disable-blink-features=AutomationControlled"],
+            ignore_default_args=["--enable-automation"],
             viewport={"width": 414, "height": 896},
-            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
         )
         page = await context.new_page()
         
         await page.goto("https://www.instagram.com")
         
         print("=" * 50)
-        print("INSTAGRAM: Inicia sesión manualmente en el navegador.")
-        print("Cuando estés logueado y veas tu feed, presiona ENTER aquí.")
+        print("INSTAGRAM: Inicia sesion manualmente en el navegador.")
+        print("Cuando estes logueado y veas tu feed, presiona ENTER aqui.")
         print("=" * 50)
         
-        input("Presiona ENTER cuando hayas iniciado sesión...")
+        input("Presiona ENTER cuando hayas iniciado sesion...")
         
-        cookies = await context.cookies()
-        
-        import json
-        os.makedirs(os.path.dirname(COOKIES_FILE), exist_ok=True)
-        with open(COOKIES_FILE, "w") as f:
-            json.dump(cookies, f)
-        
-        print(f"✅ Cookies de Instagram guardadas en {COOKIES_FILE}")
-        await browser.close()
+        print(f"Sesion de Instagram guardada en {PROFILE_DIR}")
+        await context.close()
 
 
 async def publish_to_instagram(caption: str, image_path: str) -> dict:
@@ -50,24 +49,22 @@ async def publish_to_instagram(caption: str, image_path: str) -> dict:
     Publica una imagen con caption en Instagram.
     REQUIERE una imagen (Instagram no permite posts solo de texto).
     """
-    import json
-    
-    if not os.path.exists(COOKIES_FILE):
-        raise RuntimeError("No hay sesión de Instagram. Ejecuta login_instagram() primero.")
+    if not os.path.exists(PROFILE_DIR):
+        raise RuntimeError("No hay sesion de Instagram. Ejecuta login_instagram() primero.")
     
     if not image_path or not os.path.exists(image_path):
         raise RuntimeError("Instagram requiere una imagen para publicar.")
     
-    with open(COOKIES_FILE, "r") as f:
-        cookies = json.load(f)
-    
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
+        os.makedirs(PROFILE_DIR, exist_ok=True)
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir=PROFILE_DIR,
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+            ignore_default_args=["--enable-automation"],
             viewport={"width": 414, "height": 896},
-            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
         )
-        await context.add_cookies(cookies)
         page = await context.new_page()
         
         try:
@@ -110,7 +107,7 @@ async def publish_to_instagram(caption: str, image_path: str) -> dict:
             return {"success": False, "platform": "instagram", "error": str(e)}
         
         finally:
-            await browser.close()
+            await context.close()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """
 Script para iniciar sesión en todas las redes sociales.
-Ejecutar UNA VEZ para guardar las cookies.
-Después el Auto Publisher las usa automáticamente.
+Ejecutar UNA VEZ para guardar el perfil persistente de Chromium.
+Despues el Auto Publisher lo reutiliza automaticamente.
 """
 
 import asyncio
@@ -13,7 +13,7 @@ from youtube_pub import login_youtube
 
 async def main():
     print("\n🔐 AUTO PUBLISHER — Configuración de cuentas\n")
-    print("Vamos a iniciar sesión en cada red social.")
+    print("Vamos a iniciar sesion en cada red social.")
     print("Solo necesitas hacer esto UNA VEZ.\n")
     
     # Facebook
