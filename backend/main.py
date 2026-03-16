@@ -2,6 +2,7 @@
 Auto Publisher API — Backend principal con FastAPI.
 """
 
+import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -204,29 +205,33 @@ async def api_publish(request: PublishRequest):
     for plataforma in request.plataformas:
         try:
             if plataforma == "facebook" and request.texto_facebook:
-                result = await publish_to_facebook(
+                result = await asyncio.to_thread(
+                    publish_to_facebook,
                     text=request.texto_facebook,
                     image_path=request.image_path,
                     video_path=request.video_path,
                 )
                 results.append(result)
-            
+
             elif plataforma == "instagram" and request.texto_instagram and request.image_path:
-                result = await publish_to_instagram(
+                result = await asyncio.to_thread(
+                    publish_to_instagram,
                     caption=request.texto_instagram,
                     image_path=request.image_path,
                 )
                 results.append(result)
-            
+
             elif plataforma == "tiktok" and request.texto_tiktok and request.video_path:
-                result = await publish_to_tiktok(
+                result = await asyncio.to_thread(
+                    publish_to_tiktok,
                     video_path=request.video_path,
                     description=request.texto_tiktok,
                 )
                 results.append(result)
-            
+
             elif plataforma == "youtube" and request.youtube_title and request.video_path:
-                result = await publish_to_youtube(
+                result = await asyncio.to_thread(
+                    publish_to_youtube,
                     video_path=request.video_path,
                     title=request.youtube_title,
                     description=request.youtube_description or "",
