@@ -35,7 +35,7 @@ async def login_facebook():
         print("Cuando estes logueado y veas tu feed, presiona ENTER aqui.")
         print("=" * 50)
         
-        input("Presiona ENTER cuando hayas iniciado sesion...")
+        await asyncio.get_event_loop().run_in_executor(None, input, "Presiona ENTER cuando hayas iniciado sesion...")
         
         print(f"Sesion de Facebook guardada en {PROFILE_DIR}")
         await context.close()

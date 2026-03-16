@@ -35,7 +35,7 @@ async def login_tiktok():
         print("Cuando hayas iniciado sesion, presiona ENTER aqui.")
         print("=" * 50)
 
-        input("Presiona ENTER cuando hayas iniciado sesion...")
+        await asyncio.get_event_loop().run_in_executor(None, input, "Presiona ENTER cuando hayas iniciado sesion...")
 
         print(f"Sesion de TikTok guardada en {PROFILE_DIR}")
         await context.close()

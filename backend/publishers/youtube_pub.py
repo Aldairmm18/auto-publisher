@@ -35,10 +35,8 @@ async def login_youtube():
         print("Cuando hayas iniciado sesion en Google, presiona ENTER aqui.")
         print("=" * 50)
         
-        input("Presiona ENTER cuando hayas iniciado sesion...")
+        await asyncio.get_event_loop().run_in_executor(None, input, "Presiona ENTER cuando hayas iniciado sesion...")
         
-        await page.goto("https://studio.youtube.com", wait_until="domcontentloaded", timeout=30000)
-        await page.wait_for_timeout(3000)
         
         print(f"Sesion de YouTube guardada en {PROFILE_DIR}")
         await context.close()
@@ -73,6 +71,7 @@ async def publish_to_youtube(
         try:
             await page.goto("https://studio.youtube.com", wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(3000)
+        
             
             # Click en el botón de subir (Create → Upload videos)
             create_btn = page.locator('#create-icon, [aria-label="Upload videos"], [aria-label="Subir videos"]').first
