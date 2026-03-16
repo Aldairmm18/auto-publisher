@@ -60,7 +60,7 @@ async def publish_to_facebook(text: str, image_path: str = None, video_path: str
         page = await context.new_page()
         
         try:
-            await page.goto("https://www.facebook.com", wait_until="networkidle", timeout=30000)
+            await page.goto("https://www.facebook.com", wait_until="domcontentloaded", timeout=30000)
             
             # Buscar el campo de crear post
             # En Facebook, el campo de "¿Qué estás pensando?" abre el modal de post

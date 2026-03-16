@@ -68,7 +68,7 @@ async def publish_to_instagram(caption: str, image_path: str) -> dict:
         page = await context.new_page()
         
         try:
-            await page.goto("https://www.instagram.com", wait_until="networkidle", timeout=30000)
+            await page.goto("https://www.instagram.com", wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(3000)
             
             # Click en el botón de crear post (+)

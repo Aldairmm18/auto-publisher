@@ -28,7 +28,7 @@ async def login_youtube():
         )
         page = await context.new_page()
         
-        await page.goto("https://accounts.google.com")
+        await page.goto("https://accounts.google.com", wait_until="domcontentloaded", timeout=30000)
         
         print("=" * 50)
         print("YOUTUBE: Inicia sesion manualmente en el navegador.")
@@ -37,7 +37,7 @@ async def login_youtube():
         
         input("Presiona ENTER cuando hayas iniciado sesion...")
         
-        await page.goto("https://studio.youtube.com", wait_until="networkidle", timeout=30000)
+        await page.goto("https://studio.youtube.com", wait_until="domcontentloaded", timeout=30000)
         await page.wait_for_timeout(3000)
         
         print(f"Sesion de YouTube guardada en {PROFILE_DIR}")
@@ -71,7 +71,7 @@ async def publish_to_youtube(
         page = await context.new_page()
         
         try:
-            await page.goto("https://studio.youtube.com", wait_until="networkidle", timeout=30000)
+            await page.goto("https://studio.youtube.com", wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(3000)
             
             # Click en el botón de subir (Create → Upload videos)

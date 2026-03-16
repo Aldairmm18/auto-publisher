@@ -73,7 +73,7 @@ async def publish_to_tiktok(video_path: str, description: str) -> dict:
         page = await context.new_page()
 
         try:
-            await page.goto("https://www.tiktok.com/upload", wait_until="networkidle", timeout=30000)
+            await page.goto("https://www.tiktok.com/upload", wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(3000)
 
             scope = await _get_upload_scope(page)
