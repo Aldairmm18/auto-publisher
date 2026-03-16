@@ -107,9 +107,13 @@ def publish_to_facebook(text: str, image_path: str = None, video_path: str = Non
 
             print("[FACEBOOK] Haciendo click en 'Publicar'...")
             post_btn = page.locator(
-                'div[aria-label="Publicar"], div[aria-label="Publish"], div[aria-label="Post"], span:has-text("Publicar"), span:has-text("Post"), span:has-text("Publish")'
-            ).first
-            post_btn.click(timeout=10000)
+                'div[role="button"]:has-text("Publicar"):not(:has-text("Promocionar"))'
+            ).last
+            try:
+                post_btn.click(timeout=10000)
+            except Exception:
+                post_btn = page.get_by_role("button", name="Publicar")
+                post_btn.click(timeout=10000)
             page.wait_for_timeout(5000)
 
             print("[FACEBOOK] Post publicado exitosamente.")
