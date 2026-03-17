@@ -66,7 +66,7 @@ def publish_to_tiktok(video_path: str, description: str) -> dict:
         os.makedirs(PROFILE_DIR, exist_ok=True)
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
-            headless=True,
+            headless=False,
             args=["--disable-blink-features=AutomationControlled"],
             ignore_default_args=["--enable-automation"],
         )
@@ -86,12 +86,26 @@ def publish_to_tiktok(video_path: str, description: str) -> dict:
             file_input.set_input_files(video_path)
             page.wait_for_timeout(5000)
 
-            print("[TIKTOK] Haciendo click en caja de descripción...")
-            desc_box = scope.locator('[data-e2e="upload-description"], div[contenteditable="true"]').first
-            desc_box.click(timeout=10000)
-            print(f"[TIKTOK] Escribiendo descripción ({len(description)} chars)...")
-            desc_box.fill(description)
+            print("[TIKTOK] Cerrando tooltips o modales estorbosos...")
+            # Clicar en una zona vacía (esquina superior) para cerrar tours (react-joyride)
+            page.mouse.click(10, 10)
             page.wait_for_timeout(1000)
+
+            print("[TIKTOK] Haciendo click en caja de descripción...")
+            desc_box = scope.locator('.public-DraftEditor-content, [data-e2e="upload-description"], div[contenteditable="true"]').first
+
+            # Click forzado para atravesar overlays (TUXModal-overlay)
+            desc_box.click(force=True, timeout=10000)
+
+            print(f"[TIKTOK] Escribiendo descripción ({len(description)} chars)...")
+            # Usar fill con force, o si falla, simular tecleo
+            try:
+                desc_box.fill(description, force=True, timeout=5000)
+            except:
+                print("[TIKTOK] Fill falló, intentando type...")
+                desc_box.type(description, delay=50)
+
+            page.wait_for_timeout(2000)
 
             print("[TIKTOK] Haciendo click en 'Post/Publicar'...")
             post_btn = scope.locator(
