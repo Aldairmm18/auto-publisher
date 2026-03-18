@@ -67,7 +67,9 @@ def publish_to_facebook(text: str, image_path: str = None, video_path: str = Non
             print("[FACEBOOK] Buscando botón 'Crear publicación'...")
             create_post = page.locator('[aria-label="Create a post"], [aria-label="Crear una publicación"], [role="button"]:has-text("What\'s on your mind"), [role="button"]:has-text("¿Qué estás pensando")').first
             print("[FACEBOOK] Haciendo click en 'Crear publicación'...")
-            create_post.click(timeout=10000)
+            create_post.click(force=True, timeout=10000)
+            print("[FACEBOOK] Esperando a que el modal de texto cargue por completo (3s)...")
+            page.wait_for_timeout(3000)
             page.wait_for_timeout(2000)
 
             print(f"[FACEBOOK] Escribiendo texto ({len(text)} chars)...")

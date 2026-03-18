@@ -121,14 +121,43 @@ def publish_to_youtube(
 
             print("[YOUTUBE] Seleccionando 'Not made for kids'...")
             not_kids = page.locator('tp-yt-paper-radio-button[name="NOT_MADE_FOR_KIDS"], tp-yt-paper-radio-button[name="VIDEO_MADE_FOR_KIDS_NOT_MFK"]').first
-            not_kids.click(timeout=5000)
+            try:
+                not_kids.click(force=True, timeout=5000)
+            except:
+                pass
+            # Inyección JS para asegurar que Polymer registre el cambio
+            not_kids.evaluate("node => node.click()")
 
-            for i in range(3):
-                print(f"[YOUTUBE] Haciendo click en 'Next' (paso {i+1}/3)...")
-                next_btn = page.locator('#next-button, button:has-text("Next"), button:has-text("Siguiente")').first
-                next_btn.click(timeout=10000)
-                print("[YOUTUBE] Esperando 2s...")
-                page.wait_for_timeout(2000)
+            print("[YOUTUBE] Esperando a que el script de YouTube habilite el botón Next (3s)...")
+            page.wait_for_timeout(3000)
+
+            print("[YOUTUBE] Haciendo click en 'Next' (paso 1/3)...")
+            next_btn = page.locator('#next-button, button:has-text("Next"), button:has-text("Siguiente")').first
+            try:
+                next_btn.click(force=True, timeout=5000)
+            except:
+                next_btn.evaluate("node => node.click()")
+
+            print("[YOUTUBE] Esperando 2s...")
+            page.wait_for_timeout(2000)
+
+            print("[YOUTUBE] Haciendo click en 'Next' (paso 2/3)...")
+            try:
+                next_btn.click(force=True, timeout=5000)
+            except:
+                next_btn.evaluate("node => node.click()")
+
+            print("[YOUTUBE] Esperando 2s...")
+            page.wait_for_timeout(2000)
+
+            print("[YOUTUBE] Haciendo click en 'Next' (paso 3/3)...")
+            try:
+                next_btn.click(force=True, timeout=5000)
+            except:
+                next_btn.evaluate("node => node.click()")
+
+            print("[YOUTUBE] Esperando 2s...")
+            page.wait_for_timeout(2000)
 
             print("[YOUTUBE] Seleccionando visibilidad 'Public'...")
             public_radio = page.locator('tp-yt-paper-radio-button[name="PUBLIC"]').first
