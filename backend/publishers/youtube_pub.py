@@ -23,7 +23,7 @@ def login_youtube():
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
             headless=False,
-            args=["--disable-blink-features=AutomationControlled"],
+            args=["--disable-blink-features=AutomationControlled", "--window-position=-32000,-32000"],
             ignore_default_args=["--enable-automation"],
         )
         page = context.new_page()
@@ -62,7 +62,7 @@ def publish_to_youtube(
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
             headless=False,
-            args=["--disable-blink-features=AutomationControlled"],
+            args=["--disable-blink-features=AutomationControlled", "--window-position=-32000,-32000"],
             ignore_default_args=["--enable-automation"],
         )
         page = context.new_page()

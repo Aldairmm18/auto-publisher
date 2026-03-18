@@ -22,8 +22,8 @@ def login_tiktok():
         os.makedirs(PROFILE_DIR, exist_ok=True)
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"],
+            headless=False,
+            args=["--disable-blink-features=AutomationControlled", "--window-position=-32000,-32000"],
             ignore_default_args=["--enable-automation"],
         )
         page = context.new_page()
@@ -66,8 +66,8 @@ def publish_to_tiktok(video_path: str, description: str) -> dict:
         os.makedirs(PROFILE_DIR, exist_ok=True)
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"],
+            headless=False,
+            args=["--disable-blink-features=AutomationControlled", "--window-position=-32000,-32000"],
             ignore_default_args=["--enable-automation"],
         )
         page = context.new_page()
@@ -95,7 +95,11 @@ def publish_to_tiktok(video_path: str, description: str) -> dict:
             desc_box = scope.locator('.public-DraftEditor-content, [data-e2e="upload-description"], div[contenteditable="true"]').first
 
             # Click forzado para atravesar overlays (TUXModal-overlay)
-            desc_box.click(force=True, timeout=10000)
+            try:
+                desc_box.click(force=True, timeout=15000)
+            except:
+                print("[TIKTOK] Click normal falló, inyectando click con JS...")
+                desc_box.evaluate("node => node.click()")
 
             print(f"[TIKTOK] Escribiendo descripción ({len(description)} chars)...")
             # Usar fill con force, o si falla, simular tecleo

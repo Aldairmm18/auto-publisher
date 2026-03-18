@@ -23,7 +23,7 @@ def login_facebook():
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
             headless=False,
-            args=["--disable-blink-features=AutomationControlled"],
+            args=["--disable-blink-features=AutomationControlled", "--window-position=-32000,-32000"],
             ignore_default_args=["--enable-automation"],
         )
         page = context.new_page()
@@ -53,15 +53,16 @@ def publish_to_facebook(text: str, image_path: str = None, video_path: str = Non
         os.makedirs(PROFILE_DIR, exist_ok=True)
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"],
+            headless=False,
+            args=["--disable-blink-features=AutomationControlled", "--window-position=-32000,-32000"],
             ignore_default_args=["--enable-automation"],
         )
         page = context.new_page()
 
         try:
             print("[FACEBOOK] Navegando a facebook.com...")
-            page.goto("https://www.facebook.com", wait_until="domcontentloaded", timeout=30000)
+            page.goto("https://www.facebook.com", wait_until="commit", timeout=60000)
+            page.wait_for_timeout(5000)
 
             print("[FACEBOOK] Buscando botón 'Crear publicación'...")
             create_post = page.locator('[aria-label="Create a post"], [aria-label="Crear una publicación"], [role="button"]:has-text("What\'s on your mind"), [role="button"]:has-text("¿Qué estás pensando")').first
@@ -78,7 +79,7 @@ def publish_to_facebook(text: str, image_path: str = None, video_path: str = Non
                 print(f"[FACEBOOK] Subiendo imagen: {image_path}")
                 photo_btn = page.locator('[aria-label="Photo/video"], [aria-label="Foto/video"]').first
                 print("[FACEBOOK] Haciendo click en botón Foto/video...")
-                photo_btn.click(timeout=5000)
+                photo_btn.click(force=True, timeout=5000)
                 page.wait_for_timeout(1000)
 
                 print("[FACEBOOK] Seteando archivo de imagen en input...")
@@ -90,7 +91,7 @@ def publish_to_facebook(text: str, image_path: str = None, video_path: str = Non
                 print(f"[FACEBOOK] Subiendo video: {video_path}")
                 photo_btn = page.locator('[aria-label="Photo/video"], [aria-label="Foto/video"]').first
                 print("[FACEBOOK] Haciendo click en botón Foto/video (video)...")
-                photo_btn.click(timeout=5000)
+                photo_btn.click(force=True, timeout=5000)
                 page.wait_for_timeout(1000)
 
                 print("[FACEBOOK] Seteando archivo de video en input...")
@@ -102,18 +103,32 @@ def publish_to_facebook(text: str, image_path: str = None, video_path: str = Non
             next_btn = page.locator(
                 'div[aria-label="Siguiente"], div[aria-label="Next"], span:has-text("Siguiente"), span:has-text("Next")'
             ).first
-            next_btn.click(timeout=10000)
+            next_btn.click(force=True, timeout=10000)
             page.wait_for_timeout(2000)
 
-            print("[FACEBOOK] Haciendo click en 'Publicar'...")
-            post_btn = page.locator(
-                'div[role="button"]:has-text("Publicar"):not(:has-text("Promocionar"))'
-            ).last
+            print("[FACEBOOK] Esperando a que el archivo cargue y el boton se habilite (5s)...")
+            page.wait_for_timeout(5000)
+
+            print("[FACEBOOK] Intentando click maestro en 'Publicar'...")
             try:
-                post_btn.click(timeout=10000)
-            except Exception:
-                post_btn = page.get_by_role("button", name="Publicar")
-                post_btn.click(timeout=10000)
+                # Intento 1: Selector amplio
+                post_btn = page.locator('div[aria-label="Publicar"], span:has-text("Publicar"), div[role="button"]:has-text("Publicar")').last
+                post_btn.click(force=True, timeout=5000)
+            except:
+                print("[FACEBOOK] Falló click de Playwright, inyectando JS...")
+                # Intento 2: Fuerza bruta con JavaScript escaneando textos
+                page.evaluate('''() => {
+                const elements = document.querySelectorAll('span, div[role="button"]');
+                for (let el of elements) {
+                    if (el.innerText === 'Publicar' || el.innerText === 'Post') {
+                        el.click();
+                        break;
+                    }
+                }
+            }''')
+
+            print("[FACEBOOK] Esperando a que se confirme la publicacion (10s)...")
+            page.wait_for_timeout(10000)
             page.wait_for_timeout(5000)
 
             print("[FACEBOOK] Post publicado exitosamente.")

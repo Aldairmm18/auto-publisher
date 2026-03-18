@@ -23,8 +23,8 @@ def login_instagram():
         os.makedirs(PROFILE_DIR, exist_ok=True)
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
-            headless=False, # Mantenlo en False para probar
-            args=['--disable-blink-features=AutomationControlled'],
+            headless=False,
+            args=['--disable-blink-features=AutomationControlled', '--window-position=-32000,-32000'],
             ignore_default_args=['--enable-automation'],
             viewport={'width': 414, 'height': 896},
             user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'
@@ -60,7 +60,7 @@ def publish_to_instagram(caption: str, image_path: str) -> dict:
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
             headless=False,
-            args=["--disable-blink-features=AutomationControlled"],
+            args=["--disable-blink-features=AutomationControlled", "--window-position=-32000,-32000"],
             ignore_default_args=["--enable-automation"],
             viewport={"width": 414, "height": 896},
             user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
@@ -69,7 +69,8 @@ def publish_to_instagram(caption: str, image_path: str) -> dict:
 
         try:
             print("[INSTAGRAM] Navegando a instagram.com...")
-            page.goto("https://www.instagram.com", wait_until="domcontentloaded", timeout=30000)
+            page.goto("https://www.instagram.com", wait_until="commit", timeout=60000)
+            page.wait_for_timeout(5000)
             # Esperar a que cargue la pagina
             # Esperar a que cargue la pagina
             page.wait_for_timeout(5000)
