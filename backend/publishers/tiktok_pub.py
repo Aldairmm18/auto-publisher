@@ -22,7 +22,7 @@ def login_tiktok():
         os.makedirs(PROFILE_DIR, exist_ok=True)
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
-            headless=False,
+            headless=True,
             args=["--disable-blink-features=AutomationControlled"],
             ignore_default_args=["--enable-automation"],
         )
@@ -66,7 +66,7 @@ def publish_to_tiktok(video_path: str, description: str) -> dict:
         os.makedirs(PROFILE_DIR, exist_ok=True)
         context = p.chromium.launch_persistent_context(
             user_data_dir=PROFILE_DIR,
-            headless=False,
+            headless=True,
             args=["--disable-blink-features=AutomationControlled"],
             ignore_default_args=["--enable-automation"],
         )
